@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ContinuumCX — Cross-Channel Continuity Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F5F6F8;
+    --surface:#FFFFFF;
+    --ink:#0F1B2D;
+    --ink-soft:#566175;
+    --ink-faint:#8C94A3;
+    --line:#E1E4EA;
+    --coral:#FF4467;
+    --coral-soft:#FFE3E9;
+    --teal:#1B8A6F;
+    --teal-soft:#DEF3EC;
+    --amber:#E69A2E;
+    --amber-soft:#FBEACB;
+    --font-display:'Space Grotesk', sans-serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'JetBrains Mono', monospace;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  button{font-family:var(--font-body);cursor:pointer;}
+  button:focus-visible, .node:focus-visible{
+    outline:2px solid var(--coral);
+    outline-offset:2px;
+  }
+  .app{
+    max-width:1080px;
+    margin:0 auto;
+    padding:28px 24px 60px;
+  }
+
+  /* ---------- Header ---------- */
+  .topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    margin-bottom:28px;
+    flex-wrap:wrap;
+  }
+  .brand-title{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:28px;
+    letter-spacing:-0.01em;
+    margin:0;
+  }
+  .brand-title span{color:var(--coral);}
+  .brand-tagline{
+    margin:6px 0 0;
+    color:var(--ink-soft);
+    font-size:14.5px;
+    max-width:480px;
+    line-height:1.45;
+  }
+  .badge{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    background:var(--ink);
+    color:#fff;
+    padding:6px 10px;
+    border-radius:100px;
+    white-space:nowrap;
+  }
+
+  /* ---------- Step dots ---------- */
+  .step-track{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:22px;
+  }
+  .step-dot{
+    width:28px;height:28px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-mono);font-size:11px;font-weight:600;
+    border:1.5px solid var(--line);
+    background:var(--surface);
+    color:var(--ink-faint);
+    transition:all .25s ease;
+  }
+  .step-dot.done{background:var(--teal-soft);border-color:var(--teal);color:var(--teal);}
+  .step-dot.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .step-line{flex:1;height:1.5px;background:var(--line);}
+  .step-line.done{background:var(--teal);}
+
+  /* ---------- Journey rail (signature element) ---------- */
+  .rail-wrap{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:26px 28px 20px;
+    margin-bottom:18px;
+  }
+  .rail-label{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    margin:0 0 18px;
+  }
+  .rail{
+    position:relative;
+    height:54px;
+    margin:0 6px;
+  }
+  .rail-line{
+    position:absolute;
+    top:50%;left:0;right:0;
+    height:2px;
+    background:var(--line);
+    transform:translateY(-50%);
+  }
+  .rail-progress{
+    position:absolute;
+    top:50%;left:0;
+    height:2px;
+    background:var(--teal);
+    transform:translateY(-50%);
+    transition:width .5s ease;
+  }
+  .rail-nodes{
+    position:absolute;top:0;left:0;right:0;height:100%;
+    display:flex;justify-content:space-between;
+  }
+  .node{
+    position:relative;
+    width:54px;height:54px;
+    border-radius:50%;
+    background:var(--surface);
+    border:2px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-size:20px;
+    transition:all .3s ease;
+  }
+  .node .lbl{
+    position:absolute;
+    top:62px;left:50%;
+    transform:translateX(-50%);
+    font-size:12px;
+    font-weight:600;
+    color:var(--ink-faint);
+    white-space:nowrap;
+  }
+  .node.visited{border-color:var(--teal);background:var(--teal-soft);}
+  .node.active{
+    border-color:var(--coral);
+    background:var(--ink);
+    box-shadow:0 0 0 6px var(--coral-soft);
+  }
+  .node.active .lbl{color:var(--ink);font-weight:700;}
+  .pulse-dot{
+    position:absolute;
+    top:50%;
+    width:14px;height:14px;
+    background:var(--coral);
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    transition:left .5s ease;
+    box-shadow:0 0 0 4px var(--coral-soft);
+  }
+  @keyframes pulseGrow{
+    0%{box-shadow:0 0 0 4px var(--coral-soft);}
+    50%{box-shadow:0 0 0 9px var(--coral-soft);}
+    100%{box-shadow:0 0 0 4px var(--coral-soft);}
+  }
+  .pulse-dot.live{animation:pulseGrow 1.6s ease-in-out infinite;}
+
+  /* ---------- Main split ---------- */
+  .main-split{
+    display:grid;
+    grid-template-columns:1.35fr 1fr;
+    gap:18px;
+    margin-bottom:18px;
+  }
+  @media (max-width:760px){
+    .main-split{grid-template-columns:1fr;}
+  }
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px 22px;
+  }
+  .panel-label{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    margin:0 0 4px;
+  }
+  .panel-sub{
+    font-size:13.5px;
+    color:var(--ink-soft);
+    margin:0 0 16px;
+  }
+
+  /* channel frame */
+  .msg{
+    max-width:84%;
+    padding:10px 14px;
+    border-radius:12px;
+    font-size:14px;
+    line-height:1.45;
+    margin-bottom:10px;
+  }
+  .msg.customer{
+    background:var(--bg);
+    border:1px solid var(--line);
+    margin-left:auto;
+    border-bottom-right-radius:3px;
+  }
+  .msg.agent{
+    background:var(--ink);
+    color:#fff;
+    border-bottom-left-radius:3px;
+  }
+  .msg .who{
+    display:block;
+    font-family:var(--font-mono);
+    font-size:10px;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    opacity:0.6;
+    margin-bottom:4px;
+  }
+  .idle-note{
+    text-align:center;
+    font-size:12px;
+    color:var(--ink-faint);
+    font-style:italic;
+    margin:10px 0;
+  }
+  .email-card .row{
+    display:flex;
+    gap:8px;
+    font-size:13px;
+    padding:6px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .email-card .row b{color:var(--ink-faint);font-weight:600;min-width:58px;}
+  .email-body{
+    margin-top:12px;
+    font-size:14px;
+    line-height:1.55;
+  }
+
+  /* memory panel */
+  .memory-list{list-style:none;margin:0;padding:0;}
+  .memory-item{
+    position:relative;
+    padding:10px 0 10px 18px;
+    border-left:2px solid var(--line);
+    font-size:13.5px;
+    line-height:1.5;
+    color:var(--ink-soft);
+    margin-left:4px;
+  }
+  .memory-item::before{
+    content:'';
+    position:absolute;
+    left:-5px;top:14px;
+    width:8px;height:8px;
+    border-radius:50%;
+    background:var(--line);
+  }
+  .memory-item.new{
+    color:var(--ink);
+    border-left-color:var(--coral);
+    animation:fadeIn .5s ease;
+  }
+  .memory-item.new::before{background:var(--coral);}
+  @keyframes fadeIn{
+    from{opacity:0;transform:translateX(-4px);}
+    to{opacity:1;transform:translateX(0);}
+  }
+
+  /* ---------- Score strip ---------- */
+  .score-strip{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px 22px;
+    display:flex;
+    align-items:center;
+    gap:22px;
+    flex-wrap:wrap;
+    margin-bottom:18px;
+  }
+  .gauge-wrap{display:flex;align-items:center;gap:14px;}
+  .gauge-num{
+    font-family:var(--font-mono);
+    font-size:30px;
+    font-weight:700;
+  }
+  .gauge-delta{
+    font-family:var(--font-mono);
+    font-size:13px;
+    font-weight:600;
+    padding:2px 8px;
+    border-radius:100px;
+    margin-left:6px;
+  }
+  .gauge-delta.up{background:var(--teal-soft);color:var(--teal);}
+  .gauge-delta.down{background:var(--coral-soft);color:var(--coral);}
+  .gauge-label{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+  }
+  .explain-block{flex:1;min-width:220px;}
+  .explain-tag{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--coral);
+    margin:0 0 4px;
+  }
+  .explain-text{
+    margin:0;
+    font-size:14.5px;
+    color:var(--ink);
+    line-height:1.45;
+  }
+
+  /* rescue banner */
+  .rescue-banner{
+    display:none;
+    background:var(--ink);
+    color:#fff;
+    border-radius:var(--radius);
+    padding:16px 20px;
+    margin-bottom:18px;
+    gap:14px;
+    align-items:flex-start;
+  }
+  .rescue-banner.show{display:flex;animation:fadeIn .4s ease;}
+  .rescue-icon{
+    flex:0 0 auto;
+    width:34px;height:34px;
+    border-radius:50%;
+    background:var(--coral);
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;
+  }
+  .rescue-banner h4{margin:0 0 4px;font-size:14px;font-family:var(--font-display);}
+  .rescue-banner p{margin:0;font-size:13.5px;color:#C9CEDA;line-height:1.5;}
+
+  /* ---------- Summary view ---------- */
+  .summary-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+  }
+  @media (max-width:600px){.summary-grid{grid-template-columns:1fr;}}
+  .summary-card{
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px 20px;
+  }
+  .summary-card.before{background:var(--coral-soft);}
+  .summary-card.after{background:var(--teal-soft);}
+  .summary-card h4{
+    font-family:var(--font-display);
+    margin:0 0 14px;
+    font-size:15px;
+  }
+  .metric-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    padding:8px 0;
+    border-bottom:1px solid rgba(0,0,0,0.07);
+    font-size:13.5px;
+  }
+  .metric-row:last-child{border-bottom:none;}
+  .metric-val{font-family:var(--font-mono);font-weight:700;font-size:16px;}
+
+  /* ---------- Controls ---------- */
+  .controls{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+  }
+  .ctrl-btn{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:14px;
+    padding:11px 22px;
+    border-radius:100px;
+    border:1.5px solid var(--ink);
+    background:var(--surface);
+    color:var(--ink);
+    transition:all .15s ease;
+  }
+  .ctrl-btn.primary{background:var(--ink);color:#fff;}
+  .ctrl-btn:disabled{opacity:0.35;cursor:not-allowed;}
+  .ctrl-btn:not(:disabled):hover{transform:translateY(-1px);}
+  .step-readout{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--ink-faint);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important;transition:none !important;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div>
+      <h1 class="brand-title">Continuum<span>CX</span></h1>
+      <p class="brand-tagline">One memory thread that follows the customer across every channel — and a live score that proves when it's actually working.</p>
+    </div>
+    <span class="badge">Prototype · Theme 02</span>
+  </div>
+
+  <div class="step-track" id="stepTrack"></div>
+
+  <div class="rail-wrap">
+    <p class="rail-label">Customer journey — single thread, three channels</p>
+    <div class="rail">
+      <div class="rail-line"></div>
+      <div class="rail-progress" id="railProgress"></div>
+      <div class="rail-nodes" id="railNodes"></div>
+      <div class="pulse-dot live" id="pulseDot"></div>
+    </div>
+  </div>
+
+  <div class="rescue-banner" id="rescueBanner">
+    <div class="rescue-icon">⚡</div>
+    <div>
+      <h4>Auto-rescue triggered</h4>
+      <p id="rescueText"></p>
+    </div>
+  </div>
+
+  <div id="mainArea"></div>
+
+  <div class="score-strip" id="scoreStrip"></div>
+
+  <div class="controls">
+    <button class="ctrl-btn" id="prevBtn">← Back</button>
+    <span class="step-readout" id="stepReadout"></span>
+    <button class="ctrl-btn primary" id="nextBtn">Next →</button>
+  </div>
+
+</div>
+
+<script>
+const CHANNELS = [
+  {key:'chat', label:'Live Chat', icon:'💬'},
+  {key:'email', label:'Email', icon:'✉️'},
+  {key:'voice', label:'Voice Call', icon:'📞'}
+];
+
+const steps = [
+  {
+    node:0,
+    frame:'chat',
+    channelLabel:'Live Chat — Session #8841',
+    messages:[
+      {who:'customer', text:"Hi — I ordered a replacement charger 6 days ago (order #4471) and the tracking hasn't moved since Tuesday. Can someone check on it?"},
+      {who:'agent', text:"Thanks for flagging this! Let me look into order #4471 right now."}
+    ],
+    idleNote:'— no further reply in 22 hours —',
+    memoryAdd:'Opened on Chat. Order #4471, tracking stalled since Tuesday. Tone: mildly concerned.',
+    score:82,
+    explain:'Single channel, fast first response. No friction detected yet.',
+    rescue:false
+  },
+  {
+    node:1,
+    frame:'email',
+    channelLabel:'Email — Ticket #20294',
+    email:{from:'Maya R.', subject:'Still waiting — order #4471', body:"I messaged on chat yesterday about my charger order (#4471) and never heard back. It's been a week now and I need this for a trip Friday morning. Please advise."},
+    memoryAdd:'Channel switch → Email. Same order (#4471) raised again — repeat #1 detected. Urgency keyword "trip Friday" flagged.',
+    score:61,
+    explain:'Channel switch plus repeated context means partial continuity loss. Urgency is rising.',
+    rescue:false
+  },
+  {
+    node:2,
+    frame:'voice',
+    channelLabel:'Voice Call — Inbound, 04:12',
+    messages:[
+      {who:'customer', text:"This is the third time I'm explaining this — order 4471, the charger, it's been a week and I leave Friday morning."},
+      {who:'agent', text:"I'm really sorry for the run-around. Let me pull that up for you."}
+    ],
+    memoryAdd:'Channel switch → Voice. Repeat #2 detected. Sentiment trend: negative. Friction threshold crossed.',
+    score:47,
+    explain:'Two unresolved switches and rising frustration — friction threshold breached.',
+    rescue:true,
+    rescueText:'Escalated to a senior agent with the full merged thread attached: order #4471, two prior touches, Friday-morning deadline, sentiment trending down. No re-ask required.'
+  },
+  {
+    node:2,
+    frame:'voice',
+    channelLabel:'Voice Call — Inbound, 04:12 (continued)',
+    messages:[
+      {who:'customer', text:"This is the third time I'm explaining this — order 4471, the charger, it's been a week and I leave Friday morning."},
+      {who:'agent', text:"I'm really sorry for the run-around. Let me pull that up for you."},
+      {who:'agent', text:"I can see the full history here — chat, email, and this call — and that you need it by Friday. I've moved it to overnight shipping, arriving tomorrow morning."},
+      {who:'customer', text:"Oh — thank you, that's exactly what I needed."}
+    ],
+    memoryAdd:'Resolved on this same touch using the merged thread. Zero repeat-asks this turn. Sentiment recovering.',
+    score:88,
+    explain:'Full-context handoff closed the loop in one touch. Sentiment fully recovered.',
+    rescue:true,
+    rescueText:'Escalated to a senior agent with the full merged thread attached: order #4471, two prior touches, Friday-morning deadline, sentiment trending down. No re-ask required.'
+  },
+  { summary:true }
+];
+
+let i = 0;
+
+function renderStepTrack(){
+  const track = document.getElementById('stepTrack');
+  track.innerHTML = '';
+  steps.forEach((s,idx)=>{
+    const dot = document.createElement('div');
+    dot.className = 'step-dot' + (idx < i ? ' done' : idx === i ? ' active' : '');
+    dot.textContent = idx+1;
+    track.appendChild(dot);
+    if(idx < steps.length-1){
+      const line = document.createElement('div');
+      line.className = 'step-line' + (idx < i ? ' done' : '');
+      track.appendChild(line);
+    }
+  });
+}
+
+function renderRail(activeNode, visitedNodes){
+  const nodesWrap = document.getElementById('railNodes');
+  nodesWrap.innerHTML = '';
+  CHANNELS.forEach((c, idx)=>{
+    const n = document.createElement('div');
+    n.className = 'node' + (visitedNodes.has(idx) ? ' visited' : '') + (idx===activeNode ? ' active' : '');
+    n.innerHTML = c.icon + '<span class="lbl">'+c.label+'</span>';
+    nodesWrap.appendChild(n);
+  });
+  const pct = (activeNode / (CHANNELS.length-1)) * 100;
+  document.getElementById('pulseDot').style.left = pct + '%';
+  document.getElementById('railProgress').style.width = pct + '%';
+}
+
+function buildMemory(uptoIndex){
+  const list = document.createElement('ul');
+  list.className = 'memory-list';
+  for(let k=0;k<=uptoIndex;k++){
+    if(steps[k].summary) continue;
+    const li = document.createElement('li');
+    li.className = 'memory-item' + (k===uptoIndex ? ' new' : '');
+    li.textContent = steps[k].memoryAdd;
+    list.appendChild(li);
+  }
+  return list;
+}
+
+function renderChannelFrame(step){
+  const wrap = document.createElement('div');
+  if(step.frame === 'email'){
+    wrap.className = 'email-card';
+    wrap.innerHTML = `
+      <div class="row"><b>From</b> ${step.email.from}</div>
+      <div class="row"><b>Subject</b> ${step.email.subject}</div>
+      <div class="email-body">${step.email.body}</div>
+    `;
+  } else {
+    step.messages.forEach(m=>{
+      const div = document.createElement('div');
+      div.className = 'msg ' + m.who;
+      div.innerHTML = `<span class="who">${m.who}</span>${m.text}`;
+      wrap.appendChild(div);
+    });
+    if(step.idleNote){
+      const idle = document.createElement('div');
+      idle.className = 'idle-note';
+      idle.textContent = step.idleNote;
+      wrap.appendChild(idle);
+    }
+  }
+  return wrap;
+}
+
+function gaugeColor(score){
+  if(score >= 75) return 'var(--teal)';
+  if(score >= 60) return 'var(--amber)';
+  return 'var(--coral)';
+}
+
+function renderScoreStrip(step, prevScore){
+  const strip = document.getElementById('scoreStrip');
+  strip.innerHTML = '';
+  const gaugeWrap = document.createElement('div');
+  gaugeWrap.className = 'gauge-wrap';
+  const num = document.createElement('div');
+  num.innerHTML = `<div class="gauge-label">Seamlessness score</div>
+    <span class="gauge-num" style="color:${gaugeColor(step.score)}">${step.score}</span>`;
+  if(prevScore !== null){
+    const delta = step.score - prevScore;
+    const tag = document.createElement('span');
+    tag.className = 'gauge-delta ' + (delta >= 0 ? 'up' : 'down');
+    tag.textContent = (delta >= 0 ? '+' : '') + delta;
+    num.querySelector('.gauge-label').appendChild(tag);
+  }
+  gaugeWrap.appendChild(num);
+  strip.appendChild(gaugeWrap);
+
+  const explainBlock = document.createElement('div');
+  explainBlock.className = 'explain-block';
+  explainBlock.innerHTML = `<p class="explain-tag">AI explanation</p><p class="explain-text">${step.explain}</p>`;
+  strip.appendChild(explainBlock);
+}
+
+function renderSummary(){
+  const main = document.getElementById('mainArea');
+  main.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'panel';
+  wrap.innerHTML = `
+    <p class="panel-label">Impact summary</p>
+    <p class="panel-sub">Same scenario, measured with and without the continuity engine active.</p>
+    <div class="summary-grid">
+      <div class="summary-card before">
+        <h4>Without ContinuumCX</h4>
+        <div class="metric-row"><span>Repeat-asks</span><span class="metric-val">2</span></div>
+        <div class="metric-row"><span>Total handle time</span><span class="metric-val">38 min</span></div>
+        <div class="metric-row"><span>Final seamlessness score</span><span class="metric-val">31</span></div>
+      </div>
+      <div class="summary-card after">
+        <h4>With ContinuumCX</h4>
+        <div class="metric-row"><span>Repeat-asks</span><span class="metric-val">0</span></div>
+        <div class="metric-row"><span>Total handle time</span><span class="metric-val">19 min</span></div>
+        <div class="metric-row"><span>Final seamlessness score</span><span class="metric-val">88</span></div>
+      </div>
+    </div>
+  `;
+  main.appendChild(wrap);
+}
+
+function render(){
+  renderStepTrack();
+  const step = steps[i];
+  document.getElementById('rescueBanner').classList.remove('show');
+  document.getElementById('mainArea').style.display = '';
+
+  if(step.summary){
+    const visitedAll = new Set([0,1,2]);
+    renderRail(2, visitedAll);
+    renderSummary();
+    document.getElementById('scoreStrip').innerHTML = `
+      <div class="explain-block">
+        <p class="explain-tag">Bottom line</p>
+        <p class="explain-text">The journey didn't get shorter — it got understood. Same three touches, zero repeats, and a score that proves it instead of asserting it.</p>
+      </div>`;
+  } else {
+    const visited = new Set();
+    for(let k=0;k<=i;k++){ if(!steps[k].summary) visited.add(steps[k].node); }
+    renderRail(step.node, visited);
+
+    const main = document.getElementById('mainArea');
+    main.innerHTML = '';
+    const split = document.createElement('div');
+    split.className = 'main-split';
+
+    const channelPanel = document.createElement('div');
+    channelPanel.className = 'panel';
+    channelPanel.innerHTML = `<p class="panel-label">Active channel</p><p class="panel-sub">${step.channelLabel}</p>`;
+    channelPanel.appendChild(renderChannelFrame(step));
+    split.appendChild(channelPanel);
+
+    const memPanel = document.createElement('div');
+    memPanel.className = 'panel';
+    memPanel.innerHTML = `<p class="panel-label">AI memory thread</p><p class="panel-sub">Merged context, carried forward automatically</p>`;
+    memPanel.appendChild(buildMemory(i));
+    split.appendChild(memPanel);
+
+    main.appendChild(split);
+
+    if(step.rescue){
+      const banner = document.getElementById('rescueBanner');
+      document.getElementById('rescueText').textContent = step.rescueText;
+      banner.classList.add('show');
+    }
+
+    let prevScore = null;
+    for(let k=i-1;k>=0;k--){ if(!steps[k].summary){ prevScore = steps[k].score; break; } }
+    renderScoreStrip(step, prevScore);
+  }
+
+  document.getElementById('prevBtn').disabled = (i===0);
+  document.getElementById('nextBtn').textContent = (i===steps.length-1) ? 'Restart ↺' : 'Next →';
+  document.getElementById('stepReadout').textContent = `Step ${i+1} of ${steps.length}`;
+}
+
+document.getElementById('prevBtn').addEventListener('click', ()=>{
+  if(i>0){ i--; render(); }
+});
+document.getElementById('nextBtn').addEventListener('click', ()=>{
+  if(i === steps.length-1){ i = 0; } else { i++; }
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
